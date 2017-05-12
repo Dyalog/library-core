@@ -13,7 +13,8 @@
     :Field Public IsWin←0
     :Field Public IsSsh←0
 
-    :Field Public RIDE_INIT←'' ⍝ RIDE parameters if remote debugging is to be allowed
+    :Field Public Shared RIDE_INIT←'' ⍝ RIDE parameters if remote debugging is to be allowed  
+    :Field Public Shared LOG_FILE←''  ⍝ File to redirect output to (non-Windows only)
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -39,10 +40,13 @@
       ⍝ args is:
       ⍝  [1]  the workspace to load
       ⍝  [2]  any command line arguments
-      ⍝ {[3]} if present, a Boolean indicating whether to use the runtime version, OR a character vector of the executable name to run
+      ⍝ {[3]} if present, a Boolean indicating whether to use the runtime version, OR a character vector of the executable name to run 
+      ⍝ {[4]} if present, the RIDE_INIT parameters to use
+      ⍝ {[5]} if present, a log-file prefix for process output
+      
         args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
-        args←3↑args,(⍴args)↓'' '' 0
-        (ws cmd rt)←args   
+        args←5↑args,(⍴args)↓'' '' 0 '' ''
+        (ws cmd rt RIDE_INIT LOG_FILE)←args   
         IsWin←IsWindows
         IsMac←IsMacOS
         PATH←SourcePath
@@ -54,11 +58,10 @@
         Start(Ws Args RunTime)
     ∇
 
-    ∇ Start(ws args rt);psi;pid;cmd;host;port;keyfile;exe;z
+    ∇ Start(ws args rt);psi;pid;cmd;host;port;keyfile;exe;z;output
         (Ws Args)←ws args
-        :If 0≠⍴RIDE_INIT
-            args←args,' RIDE_SPAWNED=1 RIDE_INIT=',RIDE_INIT
-        :EndIf
+        args,←' RIDE_INIT="',RIDE_INIT,'"', (0≠≢RIDE_INIT)/' RIDE_SPAWNED=1' 
+        ⍝ NB Always set RIDE_INIT to override current process setting
 
         :If ~0 2 6∊⍨10|⎕DR rt ⍝ if rt is character or nested, it defines what to start
             Exe←(RunTimeName⍣rt) GetCurrentExecutable ⍝ else, deduce it 
@@ -75,11 +78,12 @@
         :Else ⍝ Unix     
             :If IsSsh                             
                 (host port keyfile exe)←Exe  
-                cmd←args,' ',exe,' -q +s ',ws
+                cmd←args,' ',exe,' +s -q ',ws
                 Proc←SshProc host port keyfile cmd
             :Else
-                z←⍕GetCurrentProcessId
-                pid←_SH'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >/dev/null 2>&1 & } ; echo $!'
+                z←⍕GetCurrentProcessId                                                   
+                output←(1+×≢LOG_FILE)⊃'/dev/null' LOG_FILE
+                pid←_SH'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
                 Proc.Id←pid
                 Proc.HasExited←HasExited
             :EndIf
