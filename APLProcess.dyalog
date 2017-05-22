@@ -13,9 +13,6 @@
     :Field Public IsWin←0
     :Field Public IsSsh←0
 
-    :Field Public Shared RIDE_INIT←'' ⍝ RIDE parameters if remote debugging is to be allowed  
-    :Field Public Shared LOG_FILE←''  ⍝ File to redirect output to (non-Windows only)
-
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
     eis←{2>|≡⍵:,⊂⍵ ⋄ ⍵} ⍝ enclose if simple
@@ -46,7 +43,7 @@
       
         args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
         args←5↑args,(⍴args)↓'' '' 0 '' ''
-        (ws cmd rt RIDE_INIT LOG_FILE)←args   
+        (ws cmd rt RIDE_INIT OUT_FILE)←args   
         IsWin←IsWindows
         IsMac←IsMacOS
         PATH←SourcePath
@@ -75,14 +72,18 @@
             psi←⎕NEW Diagnostics.ProcessStartInfo,⊂Exe(ws,' ',args)
             psi.WindowStyle←Diagnostics.ProcessWindowStyle.Minimized
             Proc←Diagnostics.Process.Start psi
-        :Else ⍝ Unix     
+        :Else ⍝ Unix         
+            :If ~∨/'LOG_FILE'⍷args            ⍝ By default
+                args,←'LOG_FILE=/dev/nul '   ⍝    no log file
+            :EndIf
+
             :If IsSsh                             
                 (host port keyfile exe)←Exe  
                 cmd←args,' ',exe,' +s -q ',ws
                 Proc←SshProc host port keyfile cmd
             :Else
                 z←⍕GetCurrentProcessId                                                   
-                output←(1+×≢LOG_FILE)⊃'/dev/null' LOG_FILE
+                output←(1+×≢OUT_FILE)⊃'/dev/null' OUT_FILE
                 pid←_SH'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
                 Proc.Id←pid
                 Proc.HasExited←HasExited
