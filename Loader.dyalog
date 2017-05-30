@@ -12,12 +12,31 @@
      ⍝     [5] - Terget namespace to materialise namespaces or classes in (default = #)
      
       (module rarg larg minver target)←{⍵,(≢⍵)'' '' ''(0 0 0)#}↓,⊆args
-     
+      
+      :If larg≡'' 
+          larg←⊢⊣⎕EX 'larg'
+      :EndIf
+
       :Trap 999
           r←Load args[1 4 5]
       :Else
           (⊃⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
-      :EndTrap
+      :EndTrap  
+      
+      ⍝ Now initialise
+      :Select lc module
+      :Case 'conga'
+          r←larg #.Conga.Init rarg
+      :Case 'sqapl'
+          r←larg #.SQA.Init rarg
+      :Case 'sharpplot'
+          ⍝ no initialisation required
+      :Case 'rconnect'
+          r←#.(⎕NEW R)
+          r.init
+      :Else
+          ('Unknown module: ',module)⎕SIGNAL 6
+      :EndSelect
     ∇
 
     ∇ r←Load args;module;minver;target
@@ -123,7 +142,6 @@
       :EndIf
     ∇
 
-
     :EndSection Conga
 
     :Section SharpPlot
@@ -165,7 +183,6 @@
           version←''
       :EndIf
     ∇
-
 
     :EndSection SharpPlot
 
