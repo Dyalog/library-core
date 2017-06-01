@@ -41,7 +41,7 @@
           z←⎕EX'larg' ⋄ larg←⊢
       :EndIf
      
-      :Trap 999
+      :Trap 0
           ns←Prepare args[1 4 5]
       :Else
           (⊃⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
@@ -79,7 +79,7 @@
           r←#.⎕NEW ns
           {}r.init
       :Else
-          ('Unknown module: ',module)⎕SIGNAL 6
+          'Supported tools are: Conga RConnect SharpPlot SQAPL' ⎕SIGNAL 6
       :EndSelect
     ∇
 
@@ -106,7 +106,7 @@
       :Case 'rconnect'
           r←LoadRConnect minver target
       :Else
-          ('Unknown module: ',module)⎕SIGNAL 6
+          'Supported tools are: Conga RConnect SharpPlot SQAPL' ⎕SIGNAL 6
       :EndSelect
     ∇
 
