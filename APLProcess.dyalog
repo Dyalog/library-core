@@ -13,7 +13,7 @@
     :Field Public Shared Platform←⊃#.⎕wg'APLVersion'
     :Field Public Shared IsWin←'Win'≡3↑Platform
     :Field Public Shared IsMac←'Mac'≡3↑Platform
-    :Field Public IsSsh←0
+    :Field Public Shared IsSsh←0
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
