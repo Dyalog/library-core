@@ -10,10 +10,10 @@
     :Field Public Proc←⎕NS ''
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
-    :Field Public Shared Platform←⊃#.⎕wg'APLVersion'
-    :Field Public Shared IsWin←'Win'≡3↑Platform
-    :Field Public Shared IsMac←'Mac'≡3↑Platform
-    :Field Public Shared IsSsh←0
+    :Field Public Platform
+    :Field Public IsWin
+    :Field Public IsMac
+    :Field Public IsSsh←0
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -36,6 +36,7 @@
     ∇ make
       :Access public instance
       :Implements constructor
+      make_common
     ∇
 
     ∇ make1 args;rt;cmd;ws
@@ -47,7 +48,7 @@
       ⍝ {[3]} if present, a Boolean indicating whether to use the runtime version, OR a character vector of the executable name to run
       ⍝ {[4]} if present, the RIDE_INIT parameters to use
       ⍝ {[5]} if present, a log-file prefix for process output
-     
+      make_common
       args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
       args←5↑args,(⍴args)↓'' '' 0 '' ''
       (ws cmd rt RIDE_INIT OUT_FILE)←args
@@ -55,6 +56,11 @@
       Start(ws cmd rt)
     ∇
 
+    ∇ make_common
+      Platform←⊃#.⎕WG'APLVersion'
+      IsWin←'Win'≡3↑Platform
+      IsMac←'Mac'≡3↑Platform
+    ∇
     ∇ Run
       :Access Public Instance
       Start(Ws Args RunTime)
@@ -506,12 +512,3 @@
     ∇
 
 :EndClass
-⍝)(!GetCurrentExecutable!!0 0 0 0 0 0 0!0
-⍝)(!GetCurrentProcessId!!0 0 0 0 0 0 0!0
-⍝)(!IsRunning!!0 0 0 0 0 0 0!0
-⍝)(!KillChildren!!0 0 0 0 0 0 0!0
-⍝)(!ListProcesses!!0 0 0 0 0 0 0!0
-⍝)(!MyDNSName!!0 0 0 0 0 0 0!0
-⍝)(!ProcessUsingPort!!0 0 0 0 0 0 0!0
-⍝)(!Stop!!0 0 0 0 0 0 0!0
-⍝)(!_SH!!0 0 0 0 0 0 0!0
