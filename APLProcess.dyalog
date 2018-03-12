@@ -13,7 +13,7 @@
     :Field Public Platform
     :Field Public IsWin
     :Field Public IsMac
-    :Field Public IsSsh←0
+    :Field Public IsSsh
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -57,10 +57,12 @@
     ∇
 
     ∇ make_common
-      Platform←⊃#.⎕WG'APLVersion'
+       Platform←⊃#.⎕WG'APLVersion'
       IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform
-    ∇
+      IsMac←'Mac'≡3↑Platform  
+      IsSsh←0
+    ∇  
+
     ∇ Run
       :Access Public Instance
       Start(Ws Args RunTime)
@@ -457,9 +459,11 @@
       :EndIf
     ∇
 
-    ∇ r←MyDNSName;GCN
+    ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
       :Access Public Shared
-     
+      
+      make_common ⍝ because this method is shared 
+
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
           r←2⊃GCN 7 255 255
@@ -475,7 +479,7 @@
       ⍝ ComputerNameMax = 8
       :ElseIf IsSsh
           ∘∘∘ ⍝ Not supported
-      :ElseIf
+      :Else
           r←⊃_SH'hostname'
       :EndIf
     ∇
