@@ -124,8 +124,9 @@
       {}Kill Proc
     ∇
 
-    ∇ r←GetCurrentProcessId;t
-      :Access Public Shared
+    ∇ r←GetCurrentProcessId;t;IsWin;IsMac;Platform
+      :Access Public Shared 
+      make_common
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
       :ElseIf IsSsh
@@ -135,8 +136,9 @@
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn
-      :Access Public Shared
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;Platform
+      :Access Public Shared      
+      make_common
       :If IsWin
           r←''
           :Trap 0
