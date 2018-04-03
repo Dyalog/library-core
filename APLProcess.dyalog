@@ -124,7 +124,7 @@
       {}Kill Proc
     ∇
 
-    ∇ r←GetCurrentProcessId;t;IsWin;IsMac;Platform
+    ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
       :Access Public Shared 
       make_common
       :If IsWin
@@ -136,7 +136,7 @@
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;Platform
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform
       :Access Public Shared      
       make_common
       :If IsWin
