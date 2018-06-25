@@ -178,8 +178,9 @@
     ∇
 
 
-    ∇ r←KillChildren Exe;kids;⎕USING;p;m;i;mask
-      :Access Public Shared
+    ∇ r←KillChildren Exe;kids;⎕USING;p;m;i;mask;IsWin;IsMac;IsSsh;Platform
+      :Access Public Shared                     
+      make_common
       ⍝ returns [;1] pid [;2] process name of any processes that were not killed
       r←0 2⍴0 ''
       :If ~0∊⍴kids←ListProcesses Exe ⍝ All child processes using the exe
@@ -208,12 +209,13 @@
       :EndIf
     ∇
 
-    ∇ r←{all}ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask;n
+    ∇ r←{all}ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask;n;IsWin;IsMac;IsSsh;Platform
       :Access Public Shared
     ⍝ returns either my child processes or all processes
     ⍝ procName is either '' for all children, or the name of a process
     ⍝ r[;1] - child process number (Id)
     ⍝ r[;2] - child process name
+      make_common
       me←GetCurrentProcessId
       r←0 2⍴0 ''
       procName←,procName
