@@ -7,7 +7,7 @@
     :Field Public Args←''
     :Field Public Ws←''
     :Field Public Exe←''
-    :Field Public Proc←⎕NS ''
+    :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
     :Field Public Platform
@@ -57,11 +57,12 @@
     ∇
 
     ∇ make_common
-       Platform←⊃#.⎕WG'APLVersion'
+      Proc←⎕NS'' ⍝ Do NOT do this in the field definition
+      Platform←⊃#.⎕WG'APLVersion'
       IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform  
+      IsMac←'Mac'≡3↑Platform
       IsSsh←0
-    ∇  
+    ∇
 
     ∇ Run
       :Access Public Instance
@@ -87,7 +88,7 @@
           Proc←Diagnostics.Process.Start psi
       :Else ⍝ Unix
           :If ~∨/'LOG_FILE'⍷args            ⍝ By default
-              args,←'LOG_FILE=/dev/nul '   ⍝    no log file
+              args,←' LOG_FILE=/dev/null '   ⍝    no log file
           :EndIf
      
           :If IsSsh
@@ -125,7 +126,7 @@
     ∇
 
     ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared 
+      :Access Public Shared
       make_common
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
@@ -137,7 +138,7 @@
     ∇
 
     ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared      
+      :Access Public Shared
       make_common
       :If IsWin
           r←''
@@ -463,9 +464,9 @@
 
     ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
       :Access Public Shared
-      
-      make_common ⍝ because this method is shared 
-
+     
+      make_common ⍝ because this method is shared
+     
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
           r←2⊃GCN 7 255 255
