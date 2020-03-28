@@ -60,9 +60,11 @@
       Proc←⎕NS'' ⍝ Do NOT do this in the field definition
       Platform←⊃#.⎕WG'APLVersion'
       IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform
+      IsMac←'Mac'≡3↑Platform 
+      IsNetCore←(,'1')≡2 ⎕NQ '.' 'GetEnvironment' 'DYALOG_NETCORE'
+      UsingSystemDiagnostics←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
       IsSsh←0
-    ∇
+    ∇  
 
     ∇ Run
       :Access Public Instance
@@ -82,13 +84,13 @@
       :EndIf
      
       :If IsWin∧~IsSsh←326=⎕DR Exe
-          ⎕USING←'System,System.dll'
+          ⎕USING←UsingSystemDiagnostics
           psi←⎕NEW Diagnostics.ProcessStartInfo,⊂Exe(ws,' ',args)
           psi.WindowStyle←Diagnostics.ProcessWindowStyle.Minimized
           Proc←Diagnostics.Process.Start psi
       :Else ⍝ Unix
           :If ~∨/'LOG_FILE'⍷args            ⍝ By default
-              args,←' LOG_FILE=/dev/null '   ⍝    no log file
+              args,←' LOG_FILE=/dev/null '  ⍝    no log file
           :EndIf
      
           :If IsSsh
@@ -126,7 +128,7 @@
     ∇
 
     ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared
+      :Access Public Shared 
       make_common
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
@@ -137,8 +139,8 @@
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform;Proc
+      :Access Public Shared      
       make_common
       :If IsWin
           r←''
@@ -147,7 +149,7 @@
               r←⊃⍴/gmfn 0(1024⍴' ')1024
           :EndTrap
           :If 0∊⍴r
-              ⎕USING←'System,system.dll'
+              ⎕USING←UsingSystemDiagnostics
               r←2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
               r←r,(~(¯1↑r)∊'\/')/'/' ⍝ Add separator if necessary
               r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
@@ -185,7 +187,7 @@
       r←0 2⍴0 ''
       :If ~0∊⍴kids←ListProcesses Exe ⍝ All child processes using the exe
           :If IsWin
-              ⎕USING←'System,system.dll'
+              ⎕USING←UsingSystemDiagnostics
               p←Diagnostics.Process.GetProcessById¨kids[;1]
               p.Kill
               ⎕DL 1
@@ -221,7 +223,7 @@
       all←{6::⍵ ⋄ all}0 ⍝ default to just my childen
      
       :If IsWin
-          ⎕USING←'System,system.dll'
+          ⎕USING←UsingSystemDiagnostics
      
           :If 0∊⍴procName ⋄ procs←Diagnostics.Process.GetProcesses''
           :Else ⋄ procs←Diagnostics.Process.GetProcessesByName⊂procName ⋄ :EndIf
@@ -270,9 +272,9 @@
       r←0 ⋄ delay←0.1
       :Trap 0
           :If IsWin
-              Proc.Kill
+              :If IsNetCore ⋄ Proc.Kill ⍬ ⋄ :Else ⋄ Proc.Kill ⋄ :EndIf ⍝ In .Net Core, Kill takes an argument
               :Repeat
-                  ⎕DL delay
+                  ⎕DL delay×~Proc.HasExited
                   delay+←delay
               :Until (delay>10)∨Proc.HasExited
           :ElseIf IsSsh
@@ -301,7 +303,7 @@
           :Repeat
               :If ~Proc.HasExited
                   :If IsWin
-                      Proc.Kill
+                      :If IsNetCore ⋄ Proc.Kill ⍬ ⋄ :Else ⋄ Proc.Kill ⋄ :EndIf
                       ⎕DL 0.2
                   :ElseIf IsSsh
                       ∘∘∘
@@ -339,7 +341,7 @@
       args←eis args
       (pid exe start)←3↑args,(⍴args)↓0 ''⍬
       :If IsWin
-          ⎕USING←'System,system.dll'
+          ⎕USING←UsingSystemDiagnostics
           :Trap 0
               proc←Diagnostics.Process.GetProcessById pid
               r←1
@@ -368,14 +370,14 @@
       :Access public shared
     ⍝ attempts to stop the process with processID pid
       :If IsWin
-          ⎕USING←'System,system.dll'
+          ⎕USING←UsingSystemDiagnostics
           :Trap 0
               proc←Diagnostics.Process.GetProcessById pid
           :Else
               r←1
               :Return
           :EndTrap
-          proc.Kill
+          :If IsNetCore ⋄ proc.Kill ⍬ ⋄ :Else ⋄ proc.Kill ⋄ :EndIf
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
       :ElseIf IsSsh
@@ -464,9 +466,9 @@
 
     ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
       :Access Public Shared
-     
-      make_common ⍝ because this method is shared
-     
+      
+      make_common ⍝ because this method is shared 
+
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
           r←2⊃GCN 7 255 255
