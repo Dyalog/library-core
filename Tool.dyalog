@@ -1,19 +1,28 @@
-﻿:Namespace Tool  
+﻿:Namespace Tool
+    ⎕IO←⎕ML←1
 ⍝ Tool loader fo Dyalog APL
 ⍝ Currently supports Conga, SQAPL, RConnect, SharpPlot
 
 ⍝   ref←Tool.New 'toolname' [rarg] [larg] [minver] [target]
 ⍝       Returns a ref to an instance of the tool, read for use
 ⍝       Optional rarg is passed to constructor or initialisation function
-⍝       Optional larg is passed if not '' 
+⍝       Optional larg is passed if not ''
 ⍝       Optional minver is minimum version required (NOT SUPPORTED YET)
 ⍝       Optional target is ref to namespace to load into
 
 ⍝   ref←Tool.Prepare 'toolname' [minver] [target]
-⍝       Returns a ref to the main namespace or class which implements the tool   
+⍝       Returns a ref to the main namespace or class which implements the tool
 ⍝       See Tool.New for a description of arguments
 
-    lc←0∘(819⌶)          ⍝ lowercase
+    ∇ lc←_SetLc
+      :Trap 2
+          lc←⎕C
+      :Else
+          lc←819⌶
+      :EndIf
+    ∇
+    lc←_SetLc
+
     ge←{(1000⊥⍺)≥1000⊥⍵} ⍝ compare version numbers
 
     ∇ r←findws ws;DYALOG
@@ -48,9 +57,9 @@
       :EndTrap
      
       ⍝ Now initialise
-      :Select lc module                                       
-
-      :Case 'conga' 
+      :Select lc module
+     
+      :Case 'conga'
           :If 9.2=⎕NC ⊂'ns'           ⍝ Instance (of Conga)
               r←ns
           :ElseIf 3=ns.⎕NC 'FindInst' ⍝ Looks like the Conga namespace
@@ -60,21 +69,21 @@
                   r←ns
               :Else
                   ('DRC.Init returned: ',⍕z)⎕SIGNAL 11
-              :EndIf  
+              :EndIf
           :Else
               ('Unable to determine Conga version of ',ns) ⎕SIGNAL 11
           :EndIf
-      
+     
       :Case 'sqapl'
-         :If 0=⊃z←ns.Init rarg
-             r←ns
-         :Else
-             ('SQA.Init returned: ',⍕z)⎕SIGNAL 11
-         :EndIf
-      
+          :If 0=⊃z←ns.Init rarg
+              r←ns
+          :Else
+              ('SQA.Init returned: ',⍕z)⎕SIGNAL 11
+          :EndIf
+     
       :Case 'sharpplot'
           r←#.⎕NEW ns
-      
+     
       :Case 'rconnect'
           r←#.⎕NEW ns
           {}r.init
@@ -93,8 +102,8 @@
      ⍝     [2] - Minimum version required in the form (major minor svnrev)
      ⍝     [3] - Terget namespace to materialise namespaces or classes in (default = #)
      
-      (module minver target)←{⍵,(≢⍵)↓''(0 0 0)#},⊆args 
-      'Minimum Version not yet supported' ⎕SIGNAL (0 0 0≢3↑minver)/11      
+      (module minver target)←{⍵,(≢⍵)↓''(0 0 0)#},⊆args
+      'Minimum Version not yet supported' ⎕SIGNAL (0 0 0≢3↑minver)/11
      
       :Select lc module
       :Case 'conga'
@@ -151,14 +160,15 @@
     ∇ r←{apl}LoadSharpPlot(minver target);nc;version
     ⍝ note that ns may be an array of references
      
-      HASDOTNET←HasDotNet
       CAUSEWAY←⎕NULL       ⍝ reference to APL ⎕CY of sharpplot
      
       :If 0=⎕NC'apl' ⋄ apl←0 ⋄ :EndIf  ⍝ do not force APL unless told to
-      :If HASDOTNET∧(~apl)
+      :If apl
+      :OrIf 4≠⊃DotNetVersion  ⍝ require .Net Framework until .NetCore has proper GDI and WinForms
+          target.System.Drawing←target.System←target.Causeway←GetAplCauseway
+      :Else
           target.⎕USING,←',system.drawing.dll' ',sharpplot.dll'
       :Else
-          target.System.Drawing←target.System←target.Causeway←GetAplCauseway
       :EndIf
       nc←target.⎕NC⊂'Causeway.SharpPlot.Version'
       :If ¯2.6=nc  ⍝ .Net
@@ -172,13 +182,19 @@
       r←target.Causeway.SharpPlot
     ∇
 
-    ∇ yes←HasDotNet;⎕USING;System
-      ⎕USING←,','     ⍝ Ensure that System is present if at all possible
-      :Trap 0 ⋄ yes←~0∊⍴⍕System.Environment.Version
-      :Else ⋄ yes←0 ⋄ :EndTrap
+    ∇ v←DotNetVersion;⎕USING
+    ⍝ Assumptions :
+    ⍝ Dyalog only allows .Net Framework v4 (v1 v2 and v3 are not supported anymore)
+    ⍝ Therefore v3 and v5 must mean .Net Core
+      :Trap 0 ⍝ ⎕USING← has been known to fail
+          ⎕USING←''        ⍝ Ensure that System is present if at all possible
+          v←System.Environment.Version.(Major Minor)
+      :Else
+          v←0 0
+      :EndTrap
     ∇
 
-    ∇ ns←GetAplCauseway   ⍝ do the ⎕CT only once, if needed
+    ∇ ns←GetAplCauseway   ⍝ do the ⎕CY only once, if needed
       :If CAUSEWAY≡⎕NULL
           CAUSEWAY←#.(⎕NS'') ⍝ unnamed namespace in #
           CAUSEWAY.⎕CY findws'sharpplot'
