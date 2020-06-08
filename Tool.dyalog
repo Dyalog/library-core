@@ -19,7 +19,7 @@
           lc←⎕C
       :Else
           lc←819⌶
-      :EndIf
+      :EndTrap
     ∇
     lc←_SetLc
 
