@@ -60,11 +60,11 @@
       Proc←⎕NS'' ⍝ Do NOT do this in the field definition
       Platform←⊃#.⎕WG'APLVersion'
       IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform 
-      IsNetCore←(,'1')≡2 ⎕NQ '.' 'GetEnvironment' 'DYALOG_NETCORE'
+      IsMac←'Mac'≡3↑Platform
+      IsNetCore←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
       UsingSystemDiagnostics←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
       IsSsh←0
-    ∇  
+    ∇
 
     ∇ Run
       :Access Public Instance
@@ -128,7 +128,7 @@
     ∇
 
     ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared 
+      :Access Public Shared
       make_common
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
@@ -140,7 +140,7 @@
     ∇
 
     ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform;Proc
-      :Access Public Shared      
+      :Access Public Shared
       make_common
       :If IsWin
           r←''
@@ -334,6 +334,20 @@
       :EndIf
     ∇
 
+    ∇ r←GetExitCode
+      :Access public Instance
+      ⍝ *** EXPERIMENTAL *** 
+      ⍝ query exit code of process. Attempt to do it in a cross platform way relying on .Net Core. Unfortunetaly
+      ⍝ we only use it on Windows atm, so this method can only be used on Windows.
+      r←''  ⍝ '' indicates "can't check" (for example, because it is still running) or non-windows platform
+      :If HasExited
+          :If IsWin
+              r←Proc.ExitCode
+          :Else
+          :EndIf
+      :EndIf
+    ∇
+
     ∇ r←IsRunning args;⎕USING;start;exe;pid;proc;diff;res
       :Access public shared
       ⍝ args - pid {exe} {startTS}
@@ -466,9 +480,9 @@
 
     ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
       :Access Public Shared
-      
-      make_common ⍝ because this method is shared 
-
+     
+      make_common ⍝ because this method is shared
+     
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
           r←2⊃GCN 7 255 255
