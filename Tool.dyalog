@@ -168,7 +168,6 @@
           target.System.Drawing←target.System←target.Causeway←GetAplCauseway
       :Else
           target.⎕USING,←',system.drawing.dll' ',sharpplot.dll'
-      :Else
       :EndIf
       nc←target.⎕NC⊂'Causeway.SharpPlot.Version'
       :If ¯2.6=nc  ⍝ .Net
