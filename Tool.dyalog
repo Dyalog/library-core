@@ -25,12 +25,19 @@
 
     ge←{(1000⊥⍺)≥1000⊥⍵} ⍝ compare version numbers
 
-    ∇ r←findws ws;DYALOG
-    ⍝ Look for workpace in the current directory, then in the DYALOG folder
+    ∇ r←isWin
+      r←'Win'≡3↑1⊃#.⎕WG'APLVersion'
+    ∇
+
+    ∇ r←findws ws;DYALOG;path
+    ⍝ Look for workpace in the current directory, then in the DYALOG folder, finally search WSPATH
      
-      :If ~⎕NEXISTS r←ws,'.dws'
+      :If ~⎕NEXISTS r←ws,'.dws'  ⍝ check current folder first
           DYALOG←{⍵,'/'↓⍨'/\'∊⍨¯1↑⍵}2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
-      :AndIf ~⎕NEXISTS r←DYALOG,'/ws/',r
+      :AndIf ~⎕NEXISTS r←DYALOG,'/ws/',r  ⍝ check DYALOG folder
+          :For path :In ':;'[1+isWin](≠⊆⊢)2 ⎕NQ'.' 'GetEnvironment' 'WSPATH'
+              →0⍴⍨⎕NEXISTS r←path,'/',ws,'.dws'
+          :EndFor
           ('Unable to locate workspace "',ws,'"')⎕SIGNAL 11
       :EndIf
     ∇
@@ -60,18 +67,18 @@
       :Select lc module
      
       :Case 'conga'
-          :If 9.2=⎕NC ⊂'ns'           ⍝ Instance (of Conga)
+          :If 9.2=⎕NC⊂'ns'           ⍝ Instance (of Conga)
               r←ns
-          :ElseIf 3=ns.⎕NC 'FindInst' ⍝ Looks like the Conga namespace
+          :ElseIf 3=ns.⎕NC'FindInst' ⍝ Looks like the Conga namespace
               r←larg ns.Init rarg
-          :ElseIf 3=ns.⎕NC 'IWAAuth'  ⍝ Looks like old style DRC
+          :ElseIf 3=ns.⎕NC'IWAAuth'  ⍝ Looks like old style DRC
               :If (⊃z←larg ns.Init rarg)∊0
                   r←ns
               :Else
                   ('DRC.Init returned: ',⍕z)⎕SIGNAL 11
               :EndIf
           :Else
-              ('Unable to determine Conga version of ',ns) ⎕SIGNAL 11
+              ('Unable to determine Conga version of ',ns)⎕SIGNAL 11
           :EndIf
      
       :Case 'sqapl'
@@ -88,7 +95,7 @@
           r←#.⎕NEW ns
           {}r.init
       :Else
-          'Supported tools are: Conga RConnect SharpPlot SQAPL' ⎕SIGNAL 6
+          'Supported tools are: Conga RConnect SharpPlot SQAPL'⎕SIGNAL 6
       :EndSelect
     ∇
 
@@ -103,7 +110,7 @@
      ⍝     [3] - Terget namespace to materialise namespaces or classes in (default = #)
      
       (module minver target)←{⍵,(≢⍵)↓''(0 0 0)#},⊆args
-      'Minimum Version not yet supported' ⎕SIGNAL (0 0 0≢3↑minver)/11
+      'Minimum Version not yet supported'⎕SIGNAL(0 0 0≢3↑minver)/11
      
       :Select lc module
       :Case 'conga'
@@ -115,7 +122,7 @@
       :Case 'rconnect'
           r←LoadRConnect minver target
       :Else
-          'Supported tools are: Conga RConnect SharpPlot SQAPL' ⎕SIGNAL 6
+          'Supported tools are: Conga RConnect SharpPlot SQAPL'⎕SIGNAL 6
       :EndSelect
     ∇
 
@@ -143,7 +150,7 @@
       :If ∨/m←0≠target.⎕NC nss←'Conga' 'DRC'
           r←target⍎ns←(m⍳1)⊃nss
       :Else
-          (ns←'Conga')target.⎕CY ws←findws 'conga'
+          (ns←'Conga')target.⎕CY ws←findws'conga'
           copied←' copied from "',ws,'"'
           r←target.Conga
       :EndIf
