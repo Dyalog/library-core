@@ -4,20 +4,55 @@
 
     (⎕IO ⎕ML)←1 1
 
+    ∇ r←Version
+      :Access Public Shared
+      r←'APLProcess' '2.2.1' '29 November 2021'
+    ∇
+
     :Field Public Args←''
     :Field Public Ws←''
     :Field Public Exe←''
     :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
-    :Field Public Platform
-    :Field Public IsWin
-    :Field Public IsMac
     :Field Public IsSsh
+    :Field Public RideInit←''
+    :Field Public OutFile←''
+    :Field Public WorkingDir←''
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
     eis←{2>|≡⍵:,⊂⍵ ⋄ ⍵} ⍝ enclose if simple
+
+    ∇ r←IsWin
+      :Access public shared
+      r←'Win'≡Platform
+    ∇
+
+    ∇ r←IsMac
+      :Access public shared
+      r←'Mac'≡Platform
+    ∇
+
+    ∇ r←IsAIX
+      :Access public shared
+      r←'AIX'≡Platform
+    ∇
+
+    ∇ r←Platform
+      :Access public shared
+      r←3↑⊃#.⎕WG'APLVersion'
+    ∇
+
+    ∇ r←IsNetCore
+      :Access public shared
+      r←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
+    ∇
+
+    ∇ r←UsingSystemDiagnostics
+      :Access public shared
+      r←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
+    ∇
 
     ∇ path←SourcePath;source
     ⍝ Determine the source path of the class
@@ -48,22 +83,19 @@
       ⍝ {[3]} if present, a Boolean indicating whether to use the runtime version, OR a character vector of the executable name to run
       ⍝ {[4]} if present, the RIDE_INIT parameters to use
       ⍝ {[5]} if present, a log-file prefix for process output
+      ⍝ {[6]} if present, the "current directory" when APL is started
       make_common
       args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
-      args←5↑args,(⍴args)↓'' '' 0 '' ''
-      (ws cmd rt RIDE_INIT OUT_FILE)←args
+      args←6↑args,(⍴args)↓'' '' 0 RideInit OutFile WorkingDir
+      (ws cmd rt RideInit OutFile WorkingDir)←args
       PATH←SourcePath
       Start(ws cmd rt)
     ∇
 
     ∇ make_common
       Proc←⎕NS'' ⍝ Do NOT do this in the field definition
-      Platform←⊃#.⎕WG'APLVersion'
-      IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform
-      IsNetCore←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
-      UsingSystemDiagnostics←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
       IsSsh←0
+      WorkingDir←1⊃1 ⎕NPARTS'' ⍝ default directory
     ∇
 
     ∇ Run
@@ -73,8 +105,7 @@
 
     ∇ Start(ws args rt);psi;pid;cmd;host;port;keyfile;exe;z;output
       (Ws Args)←ws args
-      args,←' RIDE_INIT="',RIDE_INIT,'"',(0≠≢RIDE_INIT)/' RIDE_SPAWNED=1'
-        ⍝ NB Always set RIDE_INIT to override current process setting
+      args,←' RIDE_INIT="',RideInit,'"',(0≠≢RideInit)/' RIDE_SPAWNED=1' ⍝ NB Always set RIDE_INIT to override current process setting
      
       :If ~0 2 6∊⍨10|⎕DR rt ⍝ if rt is character or nested, it defines what to start
           Exe←(RunTimeName⍣rt)GetCurrentExecutable ⍝ else, deduce it
@@ -87,20 +118,23 @@
           ⎕USING←UsingSystemDiagnostics
           psi←⎕NEW Diagnostics.ProcessStartInfo,⊂Exe(ws,' ',args)
           psi.WindowStyle←Diagnostics.ProcessWindowStyle.Minimized
+          psi.WorkingDirectory←WorkingDir
           Proc←Diagnostics.Process.Start psi
       :Else ⍝ Unix
           :If ~∨/'LOG_FILE'⍷args            ⍝ By default
               args,←' LOG_FILE=/dev/null '  ⍝    no log file
           :EndIf
      
+          cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '
           :If IsSsh
               (host port keyfile exe)←Exe
-              cmd←args,' ',exe,' +s -q ',ws
+              cmd,←args,' ',exe,' +s -q ',ws
               Proc←SshProc host port keyfile cmd
           :Else
               z←⍕GetCurrentProcessId
-              output←(1+×≢OUT_FILE)⊃'/dev/null'OUT_FILE
-              pid←_SH'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
+              output←(1+×≢OutFile)⊃'/dev/null'OutFile
+              cmd,←'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
+              pid←_SH cmd
               Proc.Id←pid
               Proc.HasExited←HasExited
           :EndIf
@@ -127,21 +161,19 @@
       {}Kill Proc
     ∇
 
-    ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
+    ∇ r←GetCurrentProcessId;t
       :Access Public Shared
-      make_common
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           r←Proc.Pid
       :Else
           r←tonum⊃_SH'echo $PPID'
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform;Proc
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn
       :Access Public Shared
-      make_common
       :If IsWin
           r←''
           :Trap 0
@@ -154,7 +186,7 @@
               r←r,(~(¯1↑r)∊'\/')/'/' ⍝ Add separator if necessary
               r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘ ⍝ Not supported
       :Else
           t←⊃_PS'-o args -p ',⍕GetCurrentProcessId ⍝ AWS
@@ -199,7 +231,7 @@
                       r←(kids[;1]∊m/p.Id)⌿kids
                   :EndIf
               :EndIf
-          :ElseIf IsSsh
+          :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
               ∘∘∘
           :Else
               mask←(⍬⍴⍴kids)⍴0
@@ -247,11 +279,11 @@
                   :EndFor
               :EndIf
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
-      ⍝ so, the best we can do at this point is identify processes that we tagged with ppid=
+      ⍝ so, the best we can do at this point is identify processes that we tagged with APLppid=
           mask←' '∧.=procs←' ',↑_PS'-eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName,' | grep -v grep' ⍝ AWS
           mask∧←2≥+\mask
           procs←↓¨mask⊂procs
@@ -277,7 +309,7 @@
                   ⎕DL delay×~Proc.HasExited
                   delay+←delay
               :Until (delay>10)∨Proc.HasExited
-          :ElseIf IsSsh
+          :ElseIf {2::0 ⋄ IsSsh}''
               ∘∘∘
           :Else ⍝ Local UNIX
               {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt
@@ -305,7 +337,7 @@
                   :If IsWin
                       :If IsNetCore ⋄ Proc.Kill ⍬ ⋄ :Else ⋄ Proc.Kill ⋄ :EndIf
                       ⎕DL 0.2
-                  :ElseIf IsSsh
+                  :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
                       ∘∘∘
                   :Else
                       {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt AWS
@@ -327,7 +359,7 @@
 
     ∇ r←HasExited
       :Access public instance
-      :If IsWin∨IsSsh
+      :If IsWin∨{2::0 ⋄ IsSsh}''
           r←{0::⍵ ⋄ Proc.HasExited}1
       :Else
           r←~UNIXIsRunning Proc.Id ⍝ AWS
@@ -336,7 +368,7 @@
 
     ∇ r←GetExitCode
       :Access public Instance
-      ⍝ *** EXPERIMENTAL *** 
+      ⍝ *** EXPERIMENTAL ***
       ⍝ query exit code of process. Attempt to do it in a cross platform way relying on .Net Core. Unfortunetaly
       ⍝ we only use it on Windows atm, so this method can only be used on Windows.
       r←''  ⍝ '' indicates "can't check" (for example, because it is still running) or non-windows platform
@@ -373,7 +405,7 @@
                   r←0
               :EndTrap
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}''
           ∘∘∘
       :Else
           r←UNIXIsRunning pid
@@ -394,9 +426,9 @@
           :If IsNetCore ⋄ proc.Kill ⍬ ⋄ :Else ⋄ proc.Kill ⋄ :EndIf
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
-      :ElseIf
+      :Else
           {}UNIXIssueKill 3 pid ⍝ issue strong interrupt
       :EndIf
     ∇
@@ -411,7 +443,7 @@
     ∇ {r}←UNIXIssueKill(signal pid)
       signal pid←⍕¨signal pid
       cmd←'kill -',signal,' ',pid,' >/dev/null 2>&1 ; echo $?'
-      :If IsSsh
+      :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
           r←⎕SH cmd
@@ -420,18 +452,27 @@
 
     ∇ r←UNIXGetShortCmd pid;cmd
       ⍝ Retrieve sort form of cmd used to start process <pid>
-      cmd←(1+IsMac)⊃'cmd' 'command'
-      cmd←'ps -o ',cmd,' -p ',(⍕pid),' 2>/dev/null ; exit 0'
-      :If IsSsh
+      cmd←⊃(IsMac,IsAIX,1)/'comm' 'command' 'cmd'
+      cmd←'-o ',cmd,' -p ',⍕pid
+      :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
-          r←⊃1↓⎕SH cmd
+          :Trap 11
+              r←⊃_PS cmd
+          :Else
+              r←''
+          :EndTrap
       :EndIf
     ∇
 
     ∇ r←_PS cmd;ps
-      ps←'ps ',⍨('AIX'≡3↑⊃'.'⎕WG'APLVersion')/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
-      r←1↓⎕SH ps,cmd,' 2>/dev/null; exit 0'                  ⍝ Remove header line
+      ps←'ps ',⍨IsAIX/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
+      :Trap 0
+          r←1↓⎕SH ps,cmd,' 2>ps.log; exit 0'                  ⍝ Remove header line
+      :Else
+          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT'ps.log' 2
+          ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
+      :EndTrap
     ∇
 
     ∇ r←{quietly}_SH cmd
@@ -478,10 +519,8 @@
       :EndIf
     ∇
 
-    ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
+    ∇ r←MyDNSName;GCN
       :Access Public Shared
-     
-      make_common ⍝ because this method is shared
      
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
@@ -496,7 +535,7 @@
       ⍝ ComputerNamePhysicalDnsDomain = 6
       ⍝ ComputerNamePhysicalDnsFullyQualified = 7 <<<
       ⍝ ComputerNameMax = 8
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘ ⍝ Not supported
       :Else
           r←⊃_SH'hostname'
