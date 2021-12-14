@@ -1,0 +1,5 @@
+ r←RPCInit port;rc
+ :If 0≠⊃rc←##.DRC.Clt(r←'c',⍕port)''port
+ :AndIf 1009≠⊃rc ⍝ name already in use
+     r←rc
+ :EndIf

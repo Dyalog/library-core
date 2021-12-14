@@ -1,0 +1,6 @@
+ r←client RPCDo expr;rc
+ rc←##.DRC.Send client expr
+ assertFail 'DRC.Send failure' assert'0=⊃rc'
+ rc←##.DRC.Wait client 5000
+ assertFail 'DRC.Wait failure' assert '0=⊃rc'
+ r←4⊃rc
