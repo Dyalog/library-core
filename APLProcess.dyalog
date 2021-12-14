@@ -1,4 +1,4 @@
-﻿:Class APLProcess
+:Class APLProcess
     ⍝ Start (and eventually dispose of) a Process
     ⍝ Note: ssh support under Windows requires Renci.SshNet.dll
 
@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.1' '29 November 2021'
+      r←'APLProcess' '2.2.2' '14 December 2021'
     ∇
 
     :Field Public Args←''
@@ -465,12 +465,14 @@
       :EndIf
     ∇
 
-    ∇ r←_PS cmd;ps
-      ps←'ps ',⍨IsAIX/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
+    ∇ r←_PS cmd;ps;logfile
+      logfile←'ps.log'
+      ps←'ps ',⍨IsAIX/'/usr/sysv/bin/' ⍝ Must use this ps on AIX
       :Trap 0
-          r←1↓⎕SH ps,cmd,' 2>ps.log; exit 0'                  ⍝ Remove header line
+          r←1↓⎕SH ps,cmd,' 2>',logfile,'; exit 0' ⍝ Remove header line
+          {0:: ⋄ 0=⊃2 ⎕NINFO ⍵:⎕NDELETE ⍵}logfile
       :Else
-          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT'ps.log' 2
+          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT logfile 2
           ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
       :EndTrap
     ∇
