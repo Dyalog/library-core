@@ -6,7 +6,7 @@
      p.Ws←##.TESTSOURCE,'rpc.dws'
      p.Args←'RPCPort=',⍕port
      p.Run
-     ⎕DL 0.5
+     ⎕DL 2
      assertFail assert'1=p.(IsRunning Proc.Id)'
      client←RPCInit port
      assertFail assert'(⎕DR client)∊80 82'
