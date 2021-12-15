@@ -1,5 +1,5 @@
  rc←LoadConga;⎕IO;⎕ML;nc;rc
- (⎕IO ⎕ML)←1
+ (⎕IO ⎕ML rc)←1
  :Trap 0
      :If 0≠nc←⊃##.⎕NC'DRC'
          :If 0≠rc←{0::1 ⋄ ⊃##.DRC.Describe'.'}''
@@ -20,17 +20,19 @@
          :Trap 11
              'Conga'##.⎕CY'conga'
              ##.DRC←##.Conga.Init''
+            rc←0
          :Else
              :Trap 11
                  'DRC'##.⎕CY'conga'
                  ##.DRC.Init''
+                 rc←0
              :Else
                  ⎕←'Could not copy Conga or DRC from the Conga workspace'
              :EndTrap
          :EndTrap
      :EndIf
  :Else
-     rc←⎕EN
+     rc←-⎕EN
      ⎕←'Unexpected error attempting to load Conga'
      ⎕←↑⎕DM
  :EndTrap
