@@ -16,4 +16,4 @@
  :Else
      ⎕←'Test failed'
  :EndTrap
- {}{0:: ⋄ ##.DRC.Close client}⍬
+ {}{0::1 ⋄ ##.DRC.Close client}⍬
