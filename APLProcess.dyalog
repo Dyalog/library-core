@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.2' '14 December 2021'
+      r←'APLProcess' '2.2.3' '25 May 2022'
     ∇
 
     :Field Public Args←''
@@ -399,7 +399,7 @@
           :EndIf
           :If ⍬≢start
               :Trap 90
-                  diff←|-/#.DFSUtils.DateToIDN¨start(proc.StartTime.(Year Month Day Hour Minute Second Millisecond))
+                  diff←|-/DateToIDN¨start(proc.StartTime.(Year Month Day Hour Minute Second Millisecond))
                   r∧←diff≤24 60 60 1000⊥0 1 0 0÷×/24 60 60 1000 ⍝ consider it a match within a 1 minute window
               :Else
                   r←0
@@ -542,6 +542,11 @@
       :Else
           r←⊃_SH'hostname'
       :EndIf
+    ∇
+
+    ∇ idn←DateToIDN ts
+      :Access Public Shared
+      idn←(2 ⎕NQ'.' 'DateToIDN'(3↑ts))+(24 60 60 1000⊥4↑3↓ts)÷86400000
     ∇
 
     ∇ Proc←SshProc(host user keyfile cmd);conn;z;kf;allpids;guid;listpids;pids;⎕USING;pid;tid
