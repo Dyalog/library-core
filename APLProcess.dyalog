@@ -1,4 +1,4 @@
-:Class APLProcess
+﻿:Class APLProcess
     ⍝ Start (and eventually dispose of) a Process
     ⍝ Note: ssh support under Windows requires Renci.SshNet.dll
 
@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.3' '25 May 2022'
+      r←'APLProcess' '2.2.4' '29 June 2022'
     ∇
 
     :Field Public Args←''
@@ -189,7 +189,7 @@
       :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘ ⍝ Not supported
       :Else
-          t←⊃_PS'-o args -p ',⍕GetCurrentProcessId ⍝ AWS
+          t←⊃1↓_SH'ps -o args -p ',⍕GetCurrentProcessId ⍝ AWS
           :If '"'''∊⍨⊃t  ⍝ if command begins with ' or "
               r←{⍵/⍨{∧\⍵∨≠\⍵}⍵=⊃⍵}t
           :Else
@@ -243,7 +243,7 @@
       :EndIf
     ∇
 
-    ∇ r←{all}ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask;n
+    ∇ r←{all}ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask;n;cmd;t
       :Access Public Shared
     ⍝ returns either my child processes or all processes
     ⍝ procName is either '' for all children, or the name of a process
@@ -284,18 +284,19 @@
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
       ⍝ so, the best we can do at this point is identify processes that we tagged with APLppid=
-          mask←' '∧.=procs←' ',↑_PS'-eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName,' | grep -v grep' ⍝ AWS
-          mask∧←2≥+\mask
-          procs←↓¨mask⊂procs
-          mask←me≠tonum¨1⊃procs ⍝ remove my task
-          procs←mask∘/¨procs[1 2]
+          cmd←'ps -eo pid,args'                   ⍝ list process id and command line (with arguments)
+          cmd,←(~all)/' | grep APLppid=',⍕me      ⍝ is not selecting all, limit to APLProcess's my process started
+          cmd,←(t←~0∊⍴procName)/' | grep ',procName ⍝ limit to entries with procName if it exists
+          cmd,←' | grep -v grep'                  ⍝ remove "grep" entries
+          procs←_SH cmd
+          procs←↑(2 part deb)¨procs
+          procs[;1]←(⊃tonum)¨procs[;1]
+          procs⌿⍨←me≠procs[;1] ⍝ remove my task
           mask←1
-          :If 0<⍴procName
-              mask←∨/¨(procName,' ')∘⍷¨(2⊃procs),¨' '
+          :If t
+              mask←∨/¨(procName,' ')∘⍷¨procs[;2],¨' '
           :EndIf
-          mask>←∨/¨'grep '∘⍷¨2⊃procs ⍝ remove procs that are for the searches
-          procs←mask∘/¨procs
-          r←↑[0.1]procs
+          r←mask⌿procs
       :EndIf
     ∇
 
@@ -351,9 +352,9 @@
           :Until Proc.HasExited∨MAX≤0
           r←Proc.HasExited
       :ElseIf 2=⎕NC'Proc' ⍝ just a process id?
-          {}UNIXIssueKill 9 Proc.Id
+          {}UNIXIssueKill 9 Proc
           {}⎕DL 2
-          r←~UNIXIsRunning Proc.Id  ⍝ AWS
+          r←~UNIXIsRunning Proc
       :EndIf
     ∇
 
@@ -362,7 +363,7 @@
       :If IsWin∨{2::0 ⋄ IsSsh}''
           r←{0::⍵ ⋄ Proc.HasExited}1
       :Else
-          r←~UNIXIsRunning Proc.Id ⍝ AWS
+          Proc.HasExited←r←~UNIXIsRunning Proc.Id ⍝ AWS
       :EndIf
     ∇
 
@@ -450,41 +451,42 @@
       :EndIf
     ∇
 
-    ∇ r←UNIXGetShortCmd pid;cmd
-      ⍝ Retrieve sort form of cmd used to start process <pid>
-      cmd←⊃(IsMac,IsAIX,1)/'comm' 'command' 'cmd'
-      cmd←'-o ',cmd,' -p ',⍕pid
+    ∇ r←UNIXGetShortCmd pid
+      ⍝ Retrieve short form of cmd used to start process <pid>
       :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
           :Trap 11
-              r←⊃_PS cmd
+              r←⊃1↓_SH'ps -o comm -p ',⍕pid
           :Else
               r←''
           :EndTrap
       :EndIf
     ∇
 
-    ∇ r←_PS cmd;ps;logfile
-      logfile←'ps.log'
-      ps←'ps ',⍨IsAIX/'/usr/sysv/bin/' ⍝ Must use this ps on AIX
-      :Trap 0
-          r←1↓⎕SH ps,cmd,' 2>',logfile,'; exit 0' ⍝ Remove header line
-          {0:: ⋄ 0=⊃2 ⎕NINFO ⍵:⎕NDELETE ⍵}logfile
-      :Else
-          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT logfile 2
-          ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
-      :EndTrap
-    ∇
+⍝    ∇ r←_PS cmd;ps;logfile
+⍝      logfile←'ps.log'
+⍝      ⍝ ps←'ps ',⍨IsAIX/'/usr/sysv/bin/' ⍝ Must use this ps on AIX (BPB not
+⍝      :Trap 0
+⍝          r←⎕SH'ps ',cmd,' 2>',logfile,'; exit 0'
+⍝          {0:: ⋄ 0=⊃2 ⎕NINFO ⍵:⎕NDELETE ⍵}logfile
+⍝      :Else
+⍝          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT logfile 2
+⍝          ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
+⍝      :EndTrap
+⍝    ∇
 
     ∇ r←{quietly}_SH cmd
       :Access public shared
-      quietly←{6::⍵ ⋄ quietly}0
+      :If 0=⎕NC'quietly' ⋄ quietly←0 ⋄ :EndIf
       :If quietly
           cmd←cmd,' </dev/null 2>&1'
       :EndIf
       r←{0::'' ⋄ ⎕SH ⍵}cmd
     ∇
+
+    deb←{1↓¯1↓{⍵/⍨~'  '⍷⍵}' ',⍵,' '}
+    part←{⍵⊆⍨~⍺{⍵∧⍺>+\⍵}' '=⍵} ⍝ partition first ⍺ sections
 
     :Class Time
         :Field Public Year
