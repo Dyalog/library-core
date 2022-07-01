@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.4' '29 June 2022'
+      r←'APLProcess' '2.2.5' '30 June 2022'
     ∇
 
     :Field Public Args←''
@@ -23,6 +23,8 @@
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
     eis←{2>|≡⍵:,⊂⍵ ⋄ ⍵} ⍝ enclose if simple
+    deb←{1↓¯1↓{⍵/⍨~'  '⍷⍵}' ',⍵,' '} ⍝ delete extraneous blanks
+    part←{⍵⊆⍨~⍺{⍵∧⍺>+\⍵}' '=⍵} ⍝ partition first ⍺ sections
 
     ∇ r←IsWin
       :Access public shared
@@ -134,7 +136,7 @@
               z←⍕GetCurrentProcessId
               output←(1+×≢OutFile)⊃'/dev/null'OutFile
               cmd,←'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
-              pid←_SH cmd
+              pid←tonum⊃_SH cmd
               Proc.Id←pid
               Proc.HasExited←HasExited
           :EndIf
@@ -284,7 +286,7 @@
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
       ⍝ so, the best we can do at this point is identify processes that we tagged with APLppid=
-          cmd←'ps -eo pid,args'                   ⍝ list process id and command line (with arguments)
+          cmd←'ps -eo pid,args | sed -n ''2,$p''' ⍝ list process id and command line (with arguments)
           cmd,←(~all)/' | grep APLppid=',⍕me      ⍝ is not selecting all, limit to APLProcess's my process started
           cmd,←(t←~0∊⍴procName)/' | grep ',procName ⍝ limit to entries with procName if it exists
           cmd,←' | grep -v grep'                  ⍝ remove "grep" entries
@@ -343,9 +345,7 @@
                   :Else
                       {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt AWS
                       {}⎕DL 2 ⍝ wait a couple seconds for it to react
-                      :If ~Proc.HasExited←0∊⍴res←UNIXGetShortCmd Proc.Id       ⍝ AWS
-                          Proc.HasExited∨←∨/'<defunct>'⍷⊃,/res
-                      :EndIf
+                      Proc.HasExited←~UNIXIsRunning Proc.Id       ⍝ AWS
                   :EndIf
               :EndIf
               MAX-←1
@@ -391,7 +391,7 @@
           ⎕USING←UsingSystemDiagnostics
           :Trap 0
               proc←Diagnostics.Process.GetProcessById pid
-              r←1
+              r←~proc.HasExited
           :Else
               :Return
           :EndTrap
@@ -436,9 +436,12 @@
 
     ∇ r←UNIXIsRunning pid;txt
     ⍝ Return 1 if the process is in the process table and is not a defunct
-      r←0
-      →(r←' '∨.≠txt←UNIXGetShortCmd pid)↓0
-      r←~∨/'<defunct>'⍷txt
+      :If {2::0 ⋄ IsSsh}'' ⍝ instance?
+          ∘∘∘
+      :Else
+          →(r←' '∨.≠txt←⊃_SH'ps -o comm -p ',(⍕pid),' | sed -n ''2,$p''')↓0
+          r←~∨/'<defunct>'⍷txt
+      :EndIf
     ∇
 
     ∇ {r}←UNIXIssueKill(signal pid)
@@ -484,9 +487,6 @@
       :EndIf
       r←{0::'' ⋄ ⎕SH ⍵}cmd
     ∇
-
-    deb←{1↓¯1↓{⍵/⍨~'  '⍷⍵}' ',⍵,' '}
-    part←{⍵⊆⍨~⍺{⍵∧⍺>+\⍵}' '=⍵} ⍝ partition first ⍺ sections
 
     :Class Time
         :Field Public Year
