@@ -12,6 +12,8 @@
      assertFail assert'(⎕DR client)∊80 82'
      assertFail assert'(⍳10)≡ client RPCDo ''⍳10'''
      assertFail assert'1=p.Kill'
+     ⎕DL 2
+     assertFail assert'0=p.(IsRunning Proc.Id)'
      ⎕←'Test completed'
  :Else
      ⎕←'Test failed'
