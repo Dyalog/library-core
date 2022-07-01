@@ -467,18 +467,6 @@
       :EndIf
     ∇
 
-⍝    ∇ r←_PS cmd;ps;logfile
-⍝      logfile←'ps.log'
-⍝      ⍝ ps←'ps ',⍨IsAIX/'/usr/sysv/bin/' ⍝ Must use this ps on AIX (BPB not
-⍝      :Trap 0
-⍝          r←⎕SH'ps ',cmd,' 2>',logfile,'; exit 0'
-⍝          {0:: ⋄ 0=⊃2 ⎕NINFO ⍵:⎕NDELETE ⍵}logfile
-⍝      :Else
-⍝          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT logfile 2
-⍝          ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
-⍝      :EndTrap
-⍝    ∇
-
     ∇ r←{quietly}_SH cmd
       :Access public shared
       :If 0=⎕NC'quietly' ⋄ quietly←0 ⋄ :EndIf
