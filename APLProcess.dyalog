@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.5' '30 June 2022'
+      r←'APLProcess' '2.2.6' '1 July 2022'
     ∇
 
     :Field Public Args←''
@@ -121,7 +121,14 @@
           psi←⎕NEW Diagnostics.ProcessStartInfo,⊂Exe(ws,' ',args)
           psi.WindowStyle←Diagnostics.ProcessWindowStyle.Minimized
           psi.WorkingDirectory←WorkingDir
+     
+          :If ~0∊⍴OutFile
+              psi.UseShellExecute←0        ⍝ this needs to be false to redirect IO (.NET Core defaults to false, .NET Framework defaults to true)
+              psi.RedirectStandardOutput←1 ⍝ redirect standard output
+          :EndIf
+     
           Proc←Diagnostics.Process.Start psi
+     
       :Else ⍝ Unix
           :If ~∨/'LOG_FILE'⍷args            ⍝ By default
               args,←' LOG_FILE=/dev/null '  ⍝    no log file
@@ -144,9 +151,17 @@
       :EndIf
     ∇
 
-    ∇ Close;count;limit
+    ∇ Close
       :Implements Destructor
-      WaitForKill&200 0.1 ⍝ Start a new thread to do the dirty work
+      :If IsWin
+      :AndIf ~0∊⍴OutFile
+          WaitForKill 200 0.1 ⍝ don't run this in a separate thread if redirecting output on Windows
+          :Trap 0
+              (⊂⊃Proc.StandardOutput.ReadToEnd ⍬)⎕NPUT OutFile 1
+          :EndTrap
+      :Else
+          WaitForKill&200 0.1 ⍝ otherwise run in a thread for improved throughput
+      :EndIf
     ∇
 
     ∇ WaitForKill(limit interval);count
@@ -435,6 +450,7 @@
     ∇
 
     ∇ r←UNIXIsRunning pid;txt
+      :Access public shared
     ⍝ Return 1 if the process is in the process table and is not a defunct
       :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
