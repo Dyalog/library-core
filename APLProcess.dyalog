@@ -151,13 +151,14 @@
       :EndIf
     ∇
 
-    ∇ Close
+    ∇ Close;out
       :Implements Destructor
       :If IsWin
       :AndIf ~0∊⍴OutFile
           WaitForKill 200 0.1 ⍝ don't run this in a separate thread if redirecting output on Windows
           :Trap 0
-              (⊂⊃Proc.StandardOutput.ReadToEnd ⍬)⎕NPUT OutFile 1
+              out←Proc.StandardOutput.ReadToEnd
+              (⊂out)⎕NPUT OutFile 1
           :EndTrap
       :Else
           WaitForKill&200 0.1 ⍝ otherwise run in a thread for improved throughput
