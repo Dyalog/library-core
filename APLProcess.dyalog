@@ -124,6 +124,7 @@
      
           :If ~0∊⍴OutFile
               psi.UseShellExecute←0        ⍝ this needs to be false to redirect IO (.NET Core defaults to false, .NET Framework defaults to true)
+              psi.StandardOutputEncoding←Text.Encoding.UTF8
               psi.RedirectStandardOutput←1 ⍝ redirect standard output
           :EndIf
      
