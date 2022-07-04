@@ -341,7 +341,7 @@
                   :Repeat
                       ⎕DL delay
                       delay+←delay
-                  :Until (delay>10)∨Proc.HasExited~UNIXIsRunning Proc.Id
+                  :Until (delay>10)∨Proc.HasExited←~UNIXIsRunning Proc.Id
               :EndIf
           :EndIf
           r←Proc.HasExited
