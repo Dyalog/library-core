@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.6' '1 July 2022'
+      r←'APLProcess' '2.2.7' '31 August 2022'
     ∇
 
     :Field Public Args←''
@@ -48,7 +48,8 @@
 
     ∇ r←IsNetCore
       :Access public shared
-      r←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
+      r←1 1≡2↑2250⌶0 ⍝ 2250⌶0 is now the preferred mechanism to interrogate .NET availability
+      ⍝ r←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
     ∇
 
     ∇ r←UsingSystemDiagnostics
