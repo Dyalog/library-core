@@ -1,4 +1,4 @@
-﻿:Class APLProcess
+:Class APLProcess
     ⍝ Start (and eventually dispose of) a Process
     ⍝ Note: ssh support under Windows requires Renci.SshNet.dll
 
@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.7' '31 August 2022'
+      r←'APLProcess' '2.2.8' '2 February 2023'
     ∇
 
     :Field Public Args←''
@@ -127,6 +127,9 @@
               psi.UseShellExecute←0        ⍝ this needs to be false to redirect IO (.NET Core defaults to false, .NET Framework defaults to true)
               psi.StandardOutputEncoding←Text.Encoding.UTF8
               psi.RedirectStandardOutput←1 ⍝ redirect standard output
+           :Else 
+              psi.RedirectStandardOutput←0
+              psi.UseShellExecute←1
           :EndIf
      
           Proc←Diagnostics.Process.Start psi
