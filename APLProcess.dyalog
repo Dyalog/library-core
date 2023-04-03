@@ -1,4 +1,4 @@
-:Class APLProcess
+﻿:Class APLProcess
     ⍝ Start (and eventually dispose of) a Process
     ⍝ Note: ssh support under Windows requires Renci.SshNet.dll
 
@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2.8' '2 February 2023'
+      r←'APLProcess' '2.2.9' '03 April 2023'
     ∇
 
     :Field Public Args←''
@@ -19,6 +19,7 @@
     :Field Public RideInit←''
     :Field Public OutFile←''
     :Field Public WorkingDir←''
+    :Field Public Detach←0
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -87,10 +88,11 @@
       ⍝ {[4]} if present, the RIDE_INIT parameters to use
       ⍝ {[5]} if present, a log-file prefix for process output
       ⍝ {[6]} if present, the "current directory" when APL is started
+      ⍝ {[7]} if present, and set to 1, do not kill spawned process in destructor
       make_common
       args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
-      args←6↑args,(⍴args)↓'' '' 0 RideInit OutFile WorkingDir
-      (ws cmd rt RideInit OutFile WorkingDir)←args
+      args←7↑args,(⍴args)↓'' '' 0 RideInit OutFile WorkingDir Detach
+      (ws cmd rt RideInit OutFile WorkingDir Detach)←args
       PATH←SourcePath
       Start(ws cmd rt)
     ∇
@@ -127,7 +129,7 @@
               psi.UseShellExecute←0        ⍝ this needs to be false to redirect IO (.NET Core defaults to false, .NET Framework defaults to true)
               psi.StandardOutputEncoding←Text.Encoding.UTF8
               psi.RedirectStandardOutput←1 ⍝ redirect standard output
-           :Else 
+          :Else
               psi.RedirectStandardOutput←0
               psi.UseShellExecute←1
           :EndIf
@@ -158,15 +160,17 @@
 
     ∇ Close;out
       :Implements Destructor
-      :If IsWin
-      :AndIf ~0∊⍴OutFile
-          WaitForKill 200 0.1 ⍝ don't run this in a separate thread if redirecting output on Windows
-          :Trap 0
-              out←Proc.StandardOutput.ReadToEnd
-              (⊂out)⎕NPUT OutFile 1
-          :EndTrap
-      :Else
-          WaitForKill&200 0.1 ⍝ otherwise run in a thread for improved throughput
+      :If ~Detach
+          :If IsWin
+          :AndIf ~0∊⍴OutFile
+              WaitForKill 200 0.1 ⍝ don't run this in a separate thread if redirecting output on Windows
+              :Trap 0
+                  out←Proc.StandardOutput.ReadToEnd
+                  (⊂out)⎕NPUT OutFile 1
+              :EndTrap
+          :Else
+              WaitForKill&200 0.1 ⍝ otherwise run in a thread for improved throughput
+          :EndIf
       :EndIf
     ∇
 
@@ -312,6 +316,7 @@
           cmd,←(t←~0∊⍴procName)/' | grep ',procName ⍝ limit to entries with procName if it exists
           cmd,←' | grep -v grep'                  ⍝ remove "grep" entries
           procs←_SH cmd
+          →0⍴⍨0∊⍴procs
           procs←↑(2 part deb)¨procs
           procs[;1]←(⊃tonum)¨procs[;1]
           procs⌿⍨←me≠procs[;1] ⍝ remove my task
