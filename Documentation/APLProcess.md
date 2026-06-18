@@ -1,11 +1,7 @@
 # APLProcess
 
-This will contain the documentation for the APLProcess tool.
+Full documentation for APLProcess can be found at: https://dyalog.github.io/APLProcess
 
-Example of use:
+For Dyalog APL versions 19.0 and earlier, the source code for APLProcess is located at: https://github.com/Dyalog/library-core
 
-          ]load APLProcess
-	#.APLProcess
-	      proc←⎕NEW APLProcess ('dfns.dws' 'MAXWS=200M' 0)
-          proc.HasExited
-    0
+For Dyalog APL versions 20.0 and later, the source code for APLProcess is located at: https://github.com/Dyalog/APLProcess
